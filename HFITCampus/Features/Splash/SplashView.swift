@@ -16,19 +16,20 @@ struct SplashView: View {
             // 启动图背景
             LaunchBackgroundView()
 
-            // 广告图
+            // 广告图 + 跳过按钮（仅广告显示时）
             if viewModel.showAd, let imageURL = viewModel.adImageURL {
                 adImageView(url: imageURL)
-            }
-
-            // 跳过按钮（广告页显示）
-            if viewModel.showAd {
                 skipButton
+            } else if viewModel.isLoading {
+                // 加载中显示启动图
+                EmptyView()
             }
         }
         .ignoresSafeArea()
-        .onChange(of: viewModel.countdown) { _, newValue in
-            if newValue == 0 {
+        .onChange(of: viewModel.countdown) { oldValue, newValue in
+            print("[SplashView] countdown: \(oldValue) -> \(newValue), showAd: \(viewModel.showAd)")
+            if newValue == 0 && !viewModel.isLoading {
+                print("[SplashView] 倒计时结束，跳转到登录页")
                 navigateToLogin()
             }
         }
@@ -84,12 +85,12 @@ struct SplashView: View {
                             .frame(width: 50, height: 50)
 
                         Text("\(viewModel.countdown)")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(size: AppTheme.fontSizeLarge, weight: .medium))
                             .foregroundColor(.white)
                     }
                 }
-                .padding(.trailing, 20)
-                .padding(.bottom, 40)
+                .padding(.trailing, AppTheme.paddingMedium)
+                .padding(.bottom, AppTheme.paddingXLarge)
             }
         }
     }
@@ -115,8 +116,8 @@ struct LaunchBackgroundView: View {
                 // 背景色
                 Color.white.ignoresSafeArea()
 
-                // 根据屏幕尺寸选择启动图
-                Image(launchImageName)
+                // 用 GeometryReader 提供的实际尺寸选择启动图
+                Image(launchImageName(for: geometry.size))
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: geometry.size.width, height: geometry.size.height)
@@ -125,11 +126,8 @@ struct LaunchBackgroundView: View {
         }
     }
 
-    private var launchImageName: String {
-        let screenHeight = UIScreen.main.bounds.height
-        let screenWidth = UIScreen.main.bounds.width
-
-        switch screenHeight {
+    private func launchImageName(for size: CGSize) -> String {
+        switch size.height {
         case 812:  // iPhone X/XS/11 Pro
             return "X"
         case 896:  // iPhone XS Max/11 Pro Max
@@ -145,9 +143,9 @@ struct LaunchBackgroundView: View {
         case 932:  // iPhone 14 Pro Max
             return "14PM"
         default:
-            if screenWidth == 375 {
+            if size.width == 375 {
                 return "6"
-            } else if screenWidth == 320 {
+            } else if size.width == 320 {
                 return "5"
             }
             return "P"  // Default iPad
