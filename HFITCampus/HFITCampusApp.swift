@@ -33,7 +33,7 @@ struct RootView: View {
         ZStack {
             switch appState.currentRoute {
             case .splash:
-                Text("广告页")
+                SplashView()
             case .login:
                 Text("登录页")
             case .main:
