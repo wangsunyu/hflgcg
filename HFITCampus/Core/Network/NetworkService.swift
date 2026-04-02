@@ -119,7 +119,13 @@ class NetworkService {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
         if let params = params {
-            let body = params.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
+            var allowed = CharacterSet.urlQueryAllowed
+            allowed.remove(charactersIn: "&=+")
+            let body = params.map { key, value in
+                let encodedKey = key.addingPercentEncoding(withAllowedCharacters: allowed) ?? key
+                let encodedValue = value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
+                return "\(encodedKey)=\(encodedValue)"
+            }.joined(separator: "&")
             request.httpBody = body.data(using: .utf8)
         }
 

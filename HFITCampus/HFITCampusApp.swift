@@ -35,7 +35,7 @@ struct RootView: View {
             case .splash:
                 SplashView()
             case .login:
-                Text("登录页")
+                LoginView(appState: appState)
             case .main:
                 Text("主页")
             }

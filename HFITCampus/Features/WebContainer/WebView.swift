@@ -13,6 +13,7 @@ import WebKit
 struct WebView: UIViewRepresentable {
     let url: URL
     @Binding var progress: Double
+    var onWebViewCreated: ((WKWebView) -> Void)?
     var onURLChange: ((URL) -> Void)?
     var onFinish: (() -> Void)?
     var onFail: ((Error) -> Void)?
@@ -48,6 +49,7 @@ struct WebView: UIViewRepresentable {
 
         // 首次加载
         context.coordinator.shouldLoad = true
+        onWebViewCreated?(webView)
         return webView
     }
 
@@ -61,6 +63,13 @@ struct WebView: UIViewRepresentable {
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.removeObserver(coordinator, forKeyPath: "estimatedProgress")
+
+        if let handler = coordinator.parent.jsBridgeHandler {
+            let userContentController = webView.configuration.userContentController
+            for messageName in handler.supportedMessages {
+                userContentController.removeScriptMessageHandler(forName: messageName)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -88,7 +97,7 @@ struct WebView: UIViewRepresentable {
         // MARK: - WKNavigationDelegate
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            if let url = navigationAction.request.url {
+            if navigationAction.targetFrame?.isMainFrame == true, let url = navigationAction.request.url {
                 parent.onURLChange?(url)
             }
             decisionHandler(.allow)
