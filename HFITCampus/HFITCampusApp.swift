@@ -37,10 +37,7 @@ struct RootView: View {
             case .login:
                 LoginView(appState: appState)
             case .main:
-                NavigationStack {
-                    Text("主页")
-                        .navigationTitle("HFITCampus")
-                }
+                MainTabView()
             }
 
             // 隐私弹窗（首次启动时显示）
