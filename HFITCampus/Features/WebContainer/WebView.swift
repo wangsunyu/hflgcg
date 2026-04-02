@@ -54,11 +54,8 @@ struct WebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // 只在首次加载时执行，避免重复加载
-        if context.coordinator.shouldLoad {
-            context.coordinator.shouldLoad = false
-            webView.load(URLRequest(url: url))
-        }
+        // 只在首次加载时执行，避免重复恢复 Cookie / 重复加载
+        context.coordinator.loadIfNeeded(on: webView)
     }
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
@@ -81,9 +78,26 @@ struct WebView: UIViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         var parent: WebView
         var shouldLoad = false
+        private var hasRestoredCookies = false
 
         init(_ parent: WebView) {
             self.parent = parent
+        }
+
+        func loadIfNeeded(on webView: WKWebView) {
+            guard shouldLoad else { return }
+
+            shouldLoad = false
+
+            guard !hasRestoredCookies else {
+                webView.load(URLRequest(url: parent.url))
+                return
+            }
+
+            hasRestoredCookies = true
+            CookieManager.shared.restoreCookies(to: webView) {
+                webView.load(URLRequest(url: self.parent.url))
+            }
         }
 
         override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {

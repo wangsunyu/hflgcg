@@ -61,9 +61,14 @@ class SplashViewModel: ObservableObject {
     func loadAdvertisement() {
         Task {
             do {
-                let ad: Advertisement = try await NetworkService.shared.get(url: APIConfig.advertisement)
+                let params = ["_userType": UserManager.shared.userType]
+                let ad: Advertisement = try await NetworkService.shared.postForm(
+                    url: APIConfig.advertisement,
+                    params: params
+                )
                 handleAdResponse(ad)
             } catch {
+                print("[SplashViewModel] 广告加载失败: \(error.localizedDescription)")
                 loadCachedOrSkip()
             }
         }

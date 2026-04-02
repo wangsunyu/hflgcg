@@ -18,8 +18,7 @@ struct SplashView: View {
 
             // 广告图 + 跳过按钮（仅广告显示时）
             if viewModel.showAd, let imageURL = viewModel.adImageURL {
-                adImageView(url: imageURL)
-                skipButton
+                adContentView(url: imageURL)
             } else if viewModel.isLoading {
                 // 加载中显示启动图
                 EmptyView()
@@ -29,76 +28,87 @@ struct SplashView: View {
         .onChange(of: viewModel.countdown) { oldValue, newValue in
             print("[SplashView] countdown: \(oldValue) -> \(newValue), showAd: \(viewModel.showAd)")
             if newValue == 0 && !viewModel.isLoading {
-                print("[SplashView] 倒计时结束，跳转到登录页")
-                navigateToLogin()
+                print("[SplashView] 倒计时结束，执行启动分流")
+                navigateToNextRoute()
             }
         }
     }
 
     // MARK: - Subviews
 
+    private func adContentView(url: String) -> some View {
+        GeometryReader { geometry in
+            let adHeight = min(max(geometry.size.height * 0.66, 360), 537.5)
+
+            VStack(spacing: 0) {
+                ZStack(alignment: .bottomTrailing) {
+                    adImageView(url: url)
+                        .frame(width: geometry.size.width, height: adHeight)
+                        .clipped()
+
+                    skipButton
+                        .padding(.trailing, 13)
+                        .padding(.bottom, 15)
+                }
+
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
     @ViewBuilder
     private func adImageView(url: String) -> some View {
-        VStack {
-            Spacer()
-
-            AsyncImage(url: URL(string: url)) { phase in
-                switch phase {
-                case .empty:
+        AsyncImage(url: URL(string: url)) { phase in
+            switch phase {
+            case .empty:
+                ZStack {
+                    Color.white
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                case .failure:
+                        .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+                        .scaleEffect(1.2)
+                }
+            case .success(let image):
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            case .failure:
+                ZStack {
+                    Color.white
                     Image(systemName: "photo")
                         .font(.largeTitle)
-                        .foregroundColor(.white)
-                @unknown default:
-                    EmptyView()
+                        .foregroundColor(.gray)
                 }
+            @unknown default:
+                Color.white
             }
-            .frame(height: 300)
-            .clipped()
-            .onTapGesture {
-                handleAdTap()
-            }
-
-            Spacer()
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            handleAdTap()
         }
     }
 
     private var skipButton: some View {
-        VStack {
-            Spacer()
+        Button(action: {
+            viewModel.skip()
+        }) {
+            ZStack {
+                Image("跳过")
+                    .resizable()
+                    .frame(width: 50, height: 22)
 
-            HStack {
-                Spacer()
-
-                Button(action: {
-                    viewModel.skip()
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.black.opacity(0.4))
-                            .frame(width: 50, height: 50)
-
-                        Text("\(viewModel.countdown)")
-                            .font(.system(size: AppTheme.fontSizeLarge, weight: .medium))
-                            .foregroundColor(.white)
-                    }
-                }
-                .padding(.trailing, AppTheme.paddingMedium)
-                .padding(.bottom, AppTheme.paddingXLarge)
+                Text("\(viewModel.countdown)s")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white)
+                    .offset(x: 10)
             }
         }
     }
 
     // MARK: - Actions
 
-    private func navigateToLogin() {
-        appState.currentRoute = .login
+    private func navigateToNextRoute() {
+        appState.currentRoute = UserManager.shared.isLoggedIn ? .main : .login
     }
 
     private func handleAdTap() {
@@ -122,26 +132,22 @@ struct LaunchBackgroundView: View {
                     .aspectRatio(contentMode: .fill)
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .clipped()
+
+                EmptyView()
             }
         }
     }
 
     private func launchImageName(for size: CGSize) -> String {
         switch size.height {
-        case 812:  // iPhone X/XS/11 Pro
+        case 812, 844, 852:  // iPhone X/13/14/14 Pro 系列比例
             return "X"
-        case 896:  // iPhone XS Max/11 Pro Max
-            return "MAX"
+        case 896, 932:  // Max / Plus / Pro Max 系列比例
+            return "X"
         case 667:  // iPhone 8/SE
             return "6"
         case 568:  // iPhone 5/5S/SE (1st)
             return "5"
-        case 844:  // iPhone 13/14
-            return "14"
-        case 852:  // iPhone 14 Pro
-            return "14P"
-        case 932:  // iPhone 14 Pro Max
-            return "14PM"
         default:
             if size.width == 375 {
                 return "6"
